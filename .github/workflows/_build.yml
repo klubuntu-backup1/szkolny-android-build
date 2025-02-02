@@ -86,16 +86,16 @@ jobs:
      # - name: Bump nightly version
     #    if: ${{ inputs.nightly }}
     #    run: python $GITHUB_WORKSPACE/.github/utils/bump_nightly.py $GITHUB_WORKSPACE >> $GITHUB_OUTPUT
-      - name: Write signing passwords and keystore
-        env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASS: ${{ secrets.DB_PASS }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          KEY_STORE: ${{ secrets.KEY_STORE }}
-        run: |
-          python $GITHUB_WORKSPACE/.github/utils/sign.py $GITHUB_WORKSPACE commit >> $GITHUB_OUTPUT
-          echo $KEY_STORE | base64 --decode > keystore.jks
+    #  - name: Write signing passwords and keystore
+     #   env:
+     #     DB_HOST: ${{ secrets.DB_HOST }}
+      #    DB_USER: ${{ secrets.DB_USER }}
+    #      DB_PASS: ${{ secrets.DB_PASS }}
+    #      DB_NAME: ${{ secrets.DB_NAME }}
+      #    KEY_STORE: ${{ secrets.KEY_STORE }}
+    #    run: |
+    #      python $GITHUB_WORKSPACE/.github/utils/sign.py $GITHUB_WORKSPACE commit >> $GITHUB_OUTPUT
+    #      echo $KEY_STORE | base64 --decode > keystore.jks
       - name: Clean build artifacts
         run: |
           rm -rf app/release/*
@@ -114,15 +114,15 @@ jobs:
             -P android.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -P android.injected.signing.key.password=${{ secrets.KEY_ALIAS_PASSWORD }}
 
-      - name: Upload release to server
-        if: ${{ inputs.release-ssh }}
-        uses: easingthemes/ssh-deploy@v2.1.6
-        env:
-          REMOTE_HOST: ${{ secrets.SSH_IP }}
-          REMOTE_USER: ${{ secrets.SSH_USERNAME }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
-          SOURCE: app/release/
-          TARGET: ${{ inputs.nightly && secrets.SSH_PATH_NIGHTLY || secrets.SSH_PATH_RELEASE }}
+     # - name: Upload release to server
+     #   if: ${{ inputs.release-ssh }}
+    #    uses: easingthemes/ssh-deploy@v2.1.6
+      #  env:
+     #     REMOTE_HOST: ${{ secrets.SSH_IP }}
+    #      REMOTE_USER: ${{ secrets.SSH_USERNAME }}
+     #     SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+      #    SOURCE: app/release/
+     #     TARGET: ${{ inputs.nightly && secrets.SSH_PATH_NIGHTLY || secrets.SSH_PATH_RELEASE }}
 
       - name: Find signed artifacts
         id: artifacts
@@ -130,57 +130,57 @@ jobs:
       - name: Extract release changelogs
         id: changelog
         run: python $GITHUB_WORKSPACE/.github/utils/extract_changelogs.py $GITHUB_WORKSPACE >> $GITHUB_OUTPUT
-      - name: Save version to database
-        id: save
-        env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASS: ${{ secrets.DB_PASS }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          APK_SERVER_RELEASE: ${{ secrets.APK_SERVER_RELEASE }}
-          APK_SERVER_NIGHTLY: ${{ secrets.APK_SERVER_NIGHTLY }}
-        run: python $GITHUB_WORKSPACE/.github/utils/save_version.py $GITHUB_WORKSPACE >> $GITHUB_OUTPUT
+    #  - name: Save version to database
+    #    id: save
+    #    env:
+    #      DB_HOST: ${{ secrets.DB_HOST }}
+     #     DB_USER: ${{ secrets.DB_USER }}
+    #      DB_PASS: ${{ secrets.DB_PASS }}
+    #      DB_NAME: ${{ secrets.DB_NAME }}
+   #       APK_SERVER_RELEASE: ${{ secrets.APK_SERVER_RELEASE }}
+   #       APK_SERVER_NIGHTLY: ${{ secrets.APK_SERVER_NIGHTLY }}
+   #     run: python $GITHUB_WORKSPACE/.github/utils/save_version.py $GITHUB_WORKSPACE >> $GITHUB_OUTPUT
 
-      - name: Release on GitHub
-        if: ${{ inputs.release-github }}
-        uses: softprops/action-gh-release@v1
-        with:
-          name: ${{ steps.changelog.outputs.changelogTitle }}
-          body_path: ${{ steps.changelog.outputs.changelogMarkdownFile }}
-          files: ${{ steps.artifacts.outputs.signedReleaseFile }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+     # - name: Release on GitHub
+    #    if: ${{ inputs.release-github }}
+    #    uses: softprops/action-gh-release@v1
+   #     with:
+      #    name: ${{ steps.changelog.outputs.changelogTitle }}
+    #      body_path: ${{ steps.changelog.outputs.changelogMarkdownFile }}
+    #      files: ${{ steps.artifacts.outputs.signedReleaseFile }}
+   #     env:
+   #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Distribute to App Distribution
-        if: ${{ inputs.release-firebase }}
-        uses: wzieba/Firebase-Distribution-Github-Action@v1
-        with:
-          appId: ${{ secrets.FIREBASE_APP_ID }}
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
-          file: ${{ steps.artifacts.outputs.signedReleaseFile }}
-          groups: ${{ inputs.nightly && secrets.FIREBASE_GROUPS_NIGHTLY || secrets.FIREBASE_GROUPS_RELEASE }}
-          releaseNotesFile: ${{ inputs.nightly && steps.changelog.outputs.commitLogPlainFile || steps.changelog.outputs.changelogPlainTitledFile }}
+     # - name: Distribute to App Distribution
+      #  if: ${{ inputs.release-firebase }}
+    #    uses: wzieba/Firebase-Distribution-Github-Action@v1
+     #   with:
+   #       appId: ${{ secrets.FIREBASE_APP_ID }}
+    #      serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+    #      file: ${{ steps.artifacts.outputs.signedReleaseFile }}
+    #      groups: ${{ inputs.nightly && secrets.FIREBASE_GROUPS_NIGHTLY || secrets.FIREBASE_GROUPS_RELEASE }}
+     #     releaseNotesFile: ${{ inputs.nightly && steps.changelog.outputs.commitLogPlainFile || steps.changelog.outputs.changelogPlainTitledFile }}
 
-      - name: Publish AAB to Google Play
-        if: ${{ inputs.release-google-play }}
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: pl.szczodrzynski.edziennik
-          releaseFiles: ${{ steps.artifacts.outputs.signedReleaseFile }}
-          releaseName: ${{ steps.changelog.outputs.appVersionName }}
-          track: ${{ secrets.PLAY_RELEASE_TRACK }}
-          whatsNewDirectory: ${{ steps.changelog.outputs.changelogDir }}
-          status: completed
+    #  - name: Publish AAB to Google Play
+    #    if: ${{ inputs.release-google-play }}
+    #    uses: r0adkll/upload-google-play@v1
+    #    with:
+    #      serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+    #      packageName: pl.szczodrzynski.edziennik
+   #       releaseFiles: ${{ steps.artifacts.outputs.signedReleaseFile }}
+     #     releaseName: ${{ steps.changelog.outputs.appVersionName }}
+      #    track: ${{ secrets.PLAY_RELEASE_TRACK }}
+    #      whatsNewDirectory: ${{ steps.changelog.outputs.changelogDir }}
+     #     status: completed
 
-      - name: Post Discord webhook
-        if: ${{ inputs.release-discord }}
-        env:
-          APK_FILE: ${{ steps.artifacts.outputs.signedReleaseFile }}
-          DOWNLOAD_URL: ${{ steps.save.outputs.downloadUrl }}
-          WEBHOOK_RELEASE: ${{ secrets.WEBHOOK_RELEASE }}
-          WEBHOOK_TESTING: ${{ secrets.WEBHOOK_TESTING }}
-        run: python $GITHUB_WORKSPACE/.github/utils/webhook_discord.py $GITHUB_WORKSPACE >> $GITHUB_OUTPUT
+  #    - name: Post Discord webhook
+    #    if: ${{ inputs.release-discord }}
+     #   env:
+     #     APK_FILE: ${{ steps.artifacts.outputs.signedReleaseFile }}
+      #    DOWNLOAD_URL: ${{ steps.save.outputs.downloadUrl }}
+     #     WEBHOOK_RELEASE: ${{ secrets.WEBHOOK_RELEASE }}
+      #    WEBHOOK_TESTING: ${{ secrets.WEBHOOK_TESTING }}
+      #  run: python $GITHUB_WORKSPACE/.github/utils/webhook_discord.py $GITHUB_WORKSPACE >> $GITHUB_OUTPUT
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
