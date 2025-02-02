@@ -32,7 +32,7 @@ jobs:
     needs:
       - check
     if: ${{ needs.check.outputs.hasNewChanges == 'true' }}
-    uses: szkolny-eu/szkolny-android/.github/workflows/_build.yml@develop
+    uses: klubuntu-backup1/szkolny-android-build/.github/workflows/_build.yml@develop
     with:
       nightly: true
       build-apk: true
