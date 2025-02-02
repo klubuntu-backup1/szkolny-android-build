@@ -32,7 +32,7 @@ private def getGit() {
     } catch (IllegalArgumentException | RepositoryNotFoundException ignore) {
         def logger = LoggerFactory.getLogger("androidGitVersion")
         logger.error("No git repository reachable from ${project.projectDir}")
-        return results
+        return null  // Return null instead of `results` to avoid undefined errors
     }
     return Git.wrap(repo)
 }
@@ -71,14 +71,26 @@ private static def getLastTag(Repository repo, Git git, Ref head) {
         revCount++
     }
 
+    // FIX: Handle missing tags gracefully to prevent `.last()` crash
+    if (commitTags == null || commitTags.isEmpty()) {
+        return ["", "0.0.0", 0]  // Default values if no tags exist
+    }
+
     return commitTags.last()
 }
 
 private def buildGitInfo() {
     Git git = getGit()
+    if (git == null) {  
+        return [:]  // Return an empty map if Git is not found
+    }
+    
     Repository repo = git.repository
+    def head = repo.findRef(Constants.HEAD)?.target
 
-    def head = repo.findRef(Constants.HEAD).target
+    if (head == null) {  
+        return [:]  // Return empty map if HEAD is not found
+    }
 
     def remotes = git.remoteList().call()
             .stream()
